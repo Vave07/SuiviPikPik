@@ -13,7 +13,7 @@ def main(page: ft.Page):
 
     # --- STOCKAGE WEB ---
     # On récupère l'index stocké dans le navigateur (ou 0 par défaut)
-    idx_saved = page.client_storage.get("index")
+    idx_saved = page.storage.get("index")
     state = {"index": idx_saved if idx_saved is not None else 0}
 
     cp = cv.Canvas(
@@ -78,7 +78,7 @@ def main(page: ft.Page):
         # Mise à jour de l'index
         state["index"] = (state["index"] + 1) % 6
         # Sauvegarde dans le stockage du navigateur
-        page.client_storage.set("index", state["index"])
+        page.storage.set("index", state["index"])
         dessiner_roue()
 
     # Layout
