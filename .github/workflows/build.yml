@@ -10,31 +10,39 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # 1. Récupère ton code depuis le dépôt GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # 2. Installe Python (Version 3.12 pour une stabilité maximale)
       - name: Install Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      # 3. Installe Flet
       - name: Install Dependencies
         run: |
           pip install flet
 
+      # 4. Compile l'application pour le Web
+      # --yes permet d'accepter l'installation automatique du SDK Flutter par GitHub
       - name: Build Web App
         run: |
-          # On compile pour le web. --base-url doit être le nom de ton dépôt
-          flet build web --base-url /SuiviPikPik/
+          flet build web --base-url /SuiviPikPik/ --yes
 
+      # 5. Prépare les fichiers pour le déploiement
       - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
 
+      # 6. Publie l'application sur ton URL GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
     
+    # Autorisations nécessaires pour que GitHub puisse publier sur ton site
     permissions:
       contents: read
       pages: write
