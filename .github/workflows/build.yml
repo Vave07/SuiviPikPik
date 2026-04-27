@@ -1,27 +1,41 @@
 name: Build Flet APK
-on: [push] # Se lance à chaque fois que tu envoies du code
+on: [push]
+
+# Force l'utilisation de Node.js 24 pour éviter les avertissements de dépréciation
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # 1. Récupère ton code depuis le dépôt GitHub
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # 2. Installe Python (Version 3.12 pour une stabilité maximale avec Flet)
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12' # On utilise une version stable
+          python-version: '3.12'
+          cache: 'pip' # Accélère les futurs builds
 
+      # 3. Installe Flet et ses outils de packaging
       - name: Install Dependencies
         run: |
+          pip install --upgrade pip
           pip install flet[all]
 
+      # 4. Lance la compilation de l'APK
+      # --project . indique que le projet est à la racine du dépôt
       - name: Build APK
         run: |
-          flet build apk --project pikpik.py
+          flet build apk
 
+      # 5. Rend le fichier APK disponible au téléchargement
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: pikpik-app
           path: build/apk/*.apk
+          retention-days: 7 # Le fichier sera supprimé après 7 jours pour gagner de la place
