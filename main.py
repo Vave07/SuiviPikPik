@@ -15,7 +15,7 @@ def main(page: ft.Page):
     # --- LOGIQUE DE STOCKAGE ULTRA-COMPATIBLE ---
     idx_saved = None
     
-    # On cherche où Flet a caché sa fonction de stockage selon la version
+    # On cherche où Flet a caché sa fonction de stockage
     if hasattr(page, "client_storage") and page.client_storage is not None:
         idx_saved = page.client_storage.get("index")
     elif hasattr(page, "storage") and page.storage is not None:
@@ -23,10 +23,8 @@ def main(page: ft.Page):
     elif hasattr(page, "session_storage") and page.session_storage is not None:
         idx_saved = page.session_storage.get("index")
 
-    # Si rien n'est trouvé, on commence à 0
     state = {"index": idx_saved if idx_saved is not None else 0}
 
-    # Canvas pour dessiner la roue
     cp = cv.Canvas(
         expand=True,
         shapes=[],
@@ -46,23 +44,19 @@ def main(page: ft.Page):
             sweep_angle = angle_segment - padding_angle
             middle_angle = start_angle + (sweep_angle / 2)
 
-            # Couleurs par défaut (gris)
             color = ft.Colors.GREY_300
             rayon_style = rayon_normal
             text_color = ft.Colors.BLACK
             
-            # Zone actuelle (Rouge)
             if i == state["index"]:
                 color = ft.Colors.RED_ACCENT_700
                 rayon_style = rayon_max
                 text_color = ft.Colors.WHITE
-            # Zone suivante (Verte)
             elif i == (state["index"] + 1) % 6:
                 color = ft.Colors.GREEN_400
                 rayon_style = rayon_normal
                 text_color = ft.Colors.WHITE
 
-            # Dessin de l'arc (le segment de la roue)
             cp.shapes.append(
                 cv.Arc(
                     centre - rayon_style, centre - rayon_style,
@@ -73,7 +67,6 @@ def main(page: ft.Page):
                 )
             )
             
-            # Placement du texte au centre du segment
             distance_texte = rayon_style * 0.65
             tx = centre + distance_texte * math.cos(middle_angle)
             ty = centre + distance_texte * math.sin(middle_angle)
@@ -83,47 +76,37 @@ def main(page: ft.Page):
                     x=tx, y=ty,
                     value=ZONES[i],
                     style=ft.TextStyle(size=14, weight="bold", color=text_color),
-                    alignment=ft.Alignment.CENTER,
+                    alignment=ft.Alignment(0, 0), # Changement ici
                 )
             )
         page.update()
 
     def valider(e):
-        # On passe à la zone suivante
         state["index"] = (state["index"] + 1) % 6
         
-        # Sauvegarde compatible selon la version de Flet
         if hasattr(page, "client_storage") and page.client_storage is not None:
             page.client_storage.set("index", state["index"])
         elif hasattr(page, "storage") and page.storage is not None:
             page.storage.set("index", state["index"])
-        elif hasattr(page, "session_storage") and page.session_storage is not None:
-            page.session_storage.set("index", state["index"])
             
         dessiner_roue()
 
-    # Interface utilisateur
+    # Layout
     page.add(
         ft.Text("Ma Rotation", size=28, weight="bold"),
         ft.Container(
             content=cp, 
             width=400, 
             height=400, 
-            alignment=ft.alignment.CENTER
+            alignment=ft.Alignment(0, 0) # Correction de l'erreur CENTER
         ),
         ft.ElevatedButton(
             "Zone suivante terminée", 
             icon=ft.Icons.CHECK_CIRCLE_OUTLINE, 
-            on_click=valider,
-            style=ft.ButtonStyle(
-                padding=20,
-                shape=ft.RoundedRectangleBorder(radius=10)
-            )
+            on_click=valider
         )
     )
 
-    # Premier dessin au lancement
     dessiner_roue()
 
-# Lancement de l'application
 ft.run(main)
