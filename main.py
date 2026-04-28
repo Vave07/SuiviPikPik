@@ -1,51 +1,48 @@
 import flet as ft
 import flet.canvas as cv
 import math
+import requests
 
-# Les 6 zones de rotation
-ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite",
-         "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
+URL KVDB personnalisée
+DB_URL = "https://kvdb.io/A2QB57woxyPTdmuS4SCHr1/index_rotation"
+ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
 def main(page: ft.Page):
-    page.title = "Suivi PikPik"
+    page.title = "Suivi PikPik Sync"
     page.theme_mode = "light"
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
+    
+    # État interne
+    state = {"index": 0}
 
-    # --- LOGIQUE DE STOCKAGE ROBUSTE ---
-    def obtenir_index_sauvegarde():
+    # --- FONCTIONS DE SYNCHRO CLOUD ---
+    def load_from_cloud():
         try:
-            # On cherche d'abord dans client_storage (le plus persistant sur mobile)
-            if page.client_storage is not None:
-                val = page.client_storage.get("index")
-                if val is not None:
-                    return int(val)
-            # Secours si client_storage n'est pas dispo
-            elif hasattr(page, "storage") and page.storage is not None:
-                val = page.storage.get("index")
-                if val is not None:
-                    return int(val)
-        except Exception as e:
-            print(f"Erreur de lecture : {e}")
+            r = requests.get(DB_URL, timeout=3)
+            if r.status_code == 200:
+                return int(r.text)
+        except:
+            print("Impossible de joindre le cloud, passage à 0")
         return 0
 
-    # État local de l'application
-    state = {"index": obtenir_index_sauvegarde()}
+    def save_to_cloud(val):
+        try:
+            # On envoie le chiffre sous forme de texte brut (plain text)
+            requests.put(DB_URL, data=str(val), timeout=3)
+        except Exception as e:
+            print(f"Erreur sauvegarde : {e}")
 
-    # Zone de dessin (Canvas)
-    cp = cv.Canvas(
-        expand=True,
-        shapes=[],
-    )
+    # Chargement initial
+    state["index"] = load_from_cloud()
+
+    cp = cv.Canvas(expand=True, shapes=[])
 
     def dessiner_roue():
         cp.shapes.clear()
-        rayon_max = 150
-        rayon_normal = 135
-        centre = 200
+        rayon_max, rayon_normal, centre = 150, 135, 200
         angle_segment = (2 * math.pi / 6)
-        padding_angle = 0.08 
-        offset_rotation = -math.pi / 2 
+        padding_angle, offset_rotation = 0.08, -math.pi / 2 
 
         for i in range(len(ZONES)):
             start_angle = offset_rotation + i * angle_segment + (padding_angle / 2)
@@ -65,50 +62,34 @@ def main(page: ft.Page):
                 rayon_style = rayon_normal
                 text_color = ft.Colors.WHITE
 
-            # Arc de cercle
             cp.shapes.append(
-                cv.Arc(
-                    centre - rayon_style, centre - rayon_style,
-                    rayon_style * 2, rayon_style * 2,
-                    start_angle, sweep_angle,
-                    use_center=True,
-                    paint=ft.Paint(color=color, style=ft.PaintingStyle.FILL),
-                )
+                cv.Arc(centre - rayon_style, centre - rayon_style,
+                       rayon_style * 2, rayon_style * 2,
+                       start_angle, sweep_angle, use_center=True,
+                       paint=ft.Paint(color=color, style=ft.PaintingStyle.FILL))
             )
             
-            # Texte
-            distance_texte = rayon_style * 0.65
-            tx = centre + distance_texte * math.cos(middle_angle)
-            ty = centre + distance_texte * math.sin(middle_angle)
+            tx = centre + (rayon_style * 0.65) * math.cos(middle_angle)
+            ty = centre + (rayon_style * 0.65) * math.sin(middle_angle)
 
             cp.shapes.append(
-                cv.Text(
-                    x=tx, y=ty,
-                    value=ZONES[i],
-                    style=ft.TextStyle(size=14, weight="bold", color=text_color),
-                    alignment=ft.Alignment(0, 0),
-                )
+                cv.Text(x=tx, y=ty, value=ZONES[i],
+                        style=ft.TextStyle(size=12, weight="bold", color=text_color),
+                        alignment=ft.Alignment(0, 0))
             )
         page.update()
 
     def valider(e):
-        # Mise à jour de l'index
+        # 1. Mise à jour locale
         state["index"] = (state["index"] + 1) % 6
-        
-        # Sauvegarde forcée
-        try:
-            if page.client_storage is not None:
-                page.client_storage.set("index", state["index"])
-            elif hasattr(page, "storage") and page.storage is not None:
-                page.storage.set("index", state["index"])
-        except Exception as ex:
-            print(f"Erreur de sauvegarde : {ex}")
-            
+        # 2. Dessin immédiat pour la réactivité
         dessiner_roue()
+        # 3. Sauvegarde silencieuse sur le cloud
+        save_to_cloud(state["index"])
 
-    # Interface
+    # Construction de l'interface
     page.add(
-        ft.Text("Rotation", size=28, weight="bold"),
+        ft.Text("The PikPik Wheel", size=30, weight="bold"),
         ft.Container(
             content=cp, 
             width=400, 
@@ -117,13 +98,13 @@ def main(page: ft.Page):
         ),
         ft.ElevatedButton(
             "Zone suivante terminée", 
-            icon=ft.Icons.CHECK_CIRCLE_OUTLINE, 
+            icon=ft.Icons.SYNC, 
             on_click=valider,
             style=ft.ButtonStyle(padding=20)
-        )
+        ),
+        ft.Text("Données synchronisées en temps réel", size=10, color=ft.Colors.GREY_500)
     )
 
     dessiner_roue()
 
-# Lancement
 ft.run(main)
