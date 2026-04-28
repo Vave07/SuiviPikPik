@@ -3,8 +3,8 @@ import flet.canvas as cv
 import math
 
 # Les 6 zones de rotation
-ZONES = ["B Droit", "V Droit", "C Droite",
-         "C Gauche", "V Gauche", "B Gauche"]
+ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite",
+         "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
 def main(page: ft.Page):
     page.title = "Suivi PikPik"
@@ -12,19 +12,27 @@ def main(page: ft.Page):
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
 
-    # --- LOGIQUE DE STOCKAGE ULTRA-COMPATIBLE ---
-    idx_saved = None
-    
-    # On cherche où Flet a caché sa fonction de stockage
-    if hasattr(page, "client_storage") and page.client_storage is not None:
-        idx_saved = page.client_storage.get("index")
-    elif hasattr(page, "storage") and page.storage is not None:
-        idx_saved = page.storage.get("index")
-    elif hasattr(page, "session_storage") and page.session_storage is not None:
-        idx_saved = page.session_storage.get("index")
+    # --- LOGIQUE DE STOCKAGE ROBUSTE ---
+    def obtenir_index_sauvegarde():
+        try:
+            # On cherche d'abord dans client_storage (le plus persistant sur mobile)
+            if page.client_storage is not None:
+                val = page.client_storage.get("index")
+                if val is not None:
+                    return int(val)
+            # Secours si client_storage n'est pas dispo
+            elif hasattr(page, "storage") and page.storage is not None:
+                val = page.storage.get("index")
+                if val is not None:
+                    return int(val)
+        except Exception as e:
+            print(f"Erreur de lecture : {e}")
+        return 0
 
-    state = {"index": idx_saved if idx_saved is not None else 0}
+    # État local de l'application
+    state = {"index": obtenir_index_sauvegarde()}
 
+    # Zone de dessin (Canvas)
     cp = cv.Canvas(
         expand=True,
         shapes=[],
@@ -57,6 +65,7 @@ def main(page: ft.Page):
                 rayon_style = rayon_normal
                 text_color = ft.Colors.WHITE
 
+            # Arc de cercle
             cp.shapes.append(
                 cv.Arc(
                     centre - rayon_style, centre - rayon_style,
@@ -67,6 +76,7 @@ def main(page: ft.Page):
                 )
             )
             
+            # Texte
             distance_texte = rayon_style * 0.65
             tx = centre + distance_texte * math.cos(middle_angle)
             ty = centre + distance_texte * math.sin(middle_angle)
@@ -76,37 +86,44 @@ def main(page: ft.Page):
                     x=tx, y=ty,
                     value=ZONES[i],
                     style=ft.TextStyle(size=14, weight="bold", color=text_color),
-                    alignment=ft.Alignment(0, 0), # Changement ici
+                    alignment=ft.Alignment(0, 0),
                 )
             )
         page.update()
 
     def valider(e):
+        # Mise à jour de l'index
         state["index"] = (state["index"] + 1) % 6
         
-        if hasattr(page, "client_storage") and page.client_storage is not None:
-            page.client_storage.set("index", state["index"])
-        elif hasattr(page, "storage") and page.storage is not None:
-            page.storage.set("index", state["index"])
+        # Sauvegarde forcée
+        try:
+            if page.client_storage is not None:
+                page.client_storage.set("index", state["index"])
+            elif hasattr(page, "storage") and page.storage is not None:
+                page.storage.set("index", state["index"])
+        except Exception as ex:
+            print(f"Erreur de sauvegarde : {ex}")
             
         dessiner_roue()
 
-    # Layout
+    # Interface
     page.add(
-        ft.Text("Ma Rotation", size=28, weight="bold"),
+        ft.Text("Rotation", size=28, weight="bold"),
         ft.Container(
             content=cp, 
             width=400, 
             height=400, 
-            alignment=ft.Alignment(0, 0) # Correction de l'erreur CENTER
+            alignment=ft.Alignment(0, 0)
         ),
         ft.ElevatedButton(
             "Zone suivante terminée", 
             icon=ft.Icons.CHECK_CIRCLE_OUTLINE, 
-            on_click=valider
+            on_click=valider,
+            style=ft.ButtonStyle(padding=20)
         )
     )
 
     dessiner_roue()
 
+# Lancement
 ft.run(main)
