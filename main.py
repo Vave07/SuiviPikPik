@@ -88,7 +88,7 @@ def main(page: ft.Page):
         ft.Container(content=cp, width=400, height=400, alignment=ft.Alignment(0, 0)),
         # Correction du Warning : Utilisation de ft.FilledButton (plus moderne)
         ft.FilledButton(
-            text="Zone suivante terminée", 
+            label="Zone suivante terminée", # On utilise 'label' au lieu de 'text'
             icon=ft.Icons.SYNC, 
             on_click=valider,
             style=ft.ButtonStyle(
