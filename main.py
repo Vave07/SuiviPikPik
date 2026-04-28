@@ -6,15 +6,16 @@ import math
 DB_URL = "https://kvdb.io/A2QB57woxyPTdmuS4SCHr1/index_rotation"
 ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
+
 def main(page: ft.Page):
     page.title = "Suivi PikPik Sync"
     page.theme_mode = "light"
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
-    
+
     # Autoriser la communication avec KVDB
     page.fetch_whitelist = ["https://kvdb.io/*"]
-    
+
     state = {"index": 0}
 
     # --- SYNCHRO CLOUD ---
@@ -42,17 +43,17 @@ def main(page: ft.Page):
         cp.shapes.clear()
         rayon_max, rayon_normal, centre = 150, 135, 200
         angle_segment = (2 * math.pi / 6)
-        padding_angle, offset_rotation = 0.08, -math.pi / 2 
+        padding_angle, offset_rotation = 0.08, -math.pi / 2
 
         for i in range(len(ZONES)):
             start_angle = offset_rotation + i * angle_segment + (padding_angle / 2)
             sweep_angle = angle_segment - padding_angle
             middle_angle = start_angle + (sweep_angle / 2)
-            
+
             color = ft.Colors.GREY_300
             rayon_style = rayon_normal
             text_color = ft.Colors.BLACK
-            
+
             if i == state["index"]:
                 color = ft.Colors.RED_ACCENT_700
                 rayon_style = rayon_max
@@ -68,7 +69,7 @@ def main(page: ft.Page):
                        start_angle, sweep_angle, use_center=True,
                        paint=ft.Paint(color=color, style=ft.PaintingStyle.FILL))
             )
-            
+
             tx = centre + (rayon_style * 0.65) * math.cos(middle_angle)
             ty = centre + (rayon_style * 0.65) * math.sin(middle_angle)
             cp.shapes.append(
@@ -84,12 +85,11 @@ def main(page: ft.Page):
         save_to_cloud(state["index"])
 
     page.add(
-        ft.Text("Rotation", size=28, weight="bold"),
+        ft.Text("PikPik Wheel", size=28, weight="bold"),
         ft.Container(content=cp, width=400, height=400, alignment=ft.Alignment(0, 0)),
-        # Correction du Warning : Utilisation de ft.FilledButton (plus moderne)
         ft.FilledButton(
-            label="Zone suivante terminée", # On utilise 'label' au lieu de 'text'
-            icon=ft.Icons.SYNC, 
+            content="Fait !",
+            icon=ft.Icons.SYNC,
             on_click=valider,
             style=ft.ButtonStyle(
                 padding=20,
@@ -99,5 +99,6 @@ def main(page: ft.Page):
     )
 
     dessiner_roue()
+
 
 ft.run(main)
