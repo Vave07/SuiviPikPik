@@ -1,60 +1,48 @@
 import flet as ft
 import flet.canvas as cv
 import math
-import urllib.request
 
-DB_URL = "https://kvdb.io/A2QB57woxyPTdmuS4SCHr1/index_rotation"
+# Configuration des zones
 ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
 
-def main(page: ft.Page):
-    page.title = "Suivi PikPik Sync"
-    page.theme_mode = "light"
-    page.horizontal_alignment = "center"
-    page.vertical_alignment = "center"
+async def main(page: ft.Page):
+    # Paramètres de la page
+    page.title = "PikPik Wheel"
+    page.theme_mode = ft.ThemeMode.LIGHT
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.padding = 20
 
+    # État interne
     state = {"index": 0}
 
-    # --- SYNCHRO AVEC HEADERS ---
-    def load_from_cloud():
+    # --- SYSTÈME DE DÉTECTION DU STOCKAGE (VERSION ANTI-SOULIGNEMENT) ---
+    # On utilise getattr pour que PyCharm ne puisse pas râler sur l'existence de l'attribut
+    store = getattr(page, "storage", None) or getattr(page, "client_storage", None)
+
+    # --- CHARGEMENT INITIAL ---
+    if store:
         try:
-            # On ajoute un User-Agent pour éviter la 403
-            req = urllib.request.Request(
-                DB_URL,
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            with urllib.request.urlopen(req, timeout=5) as response:
-                val_txt = response.read().decode('utf-8')
-                if val_txt and "not found" not in val_txt.lower():
-                    return int(val_txt.strip())
+            stored_index = await store.get_async("last_index")
+            if stored_index is not None:
+                state["index"] = int(stored_index)
         except Exception as e:
-            # Le 404 est normal si le fichier n'existe pas encore
-            print(f"Info Load: {e}")
-        return 0
+            print(f"Erreur de lecture : {e}")
 
-    def save_to_cloud(val):
-        try:
-            req = urllib.request.Request(
-                DB_URL,
-                data=str(val).encode('utf-8'),
-                method='PUT',
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            with urllib.request.urlopen(req, timeout=5) as response:
-                print(f"Sauvegarde OK : {val}")
-        except Exception as e:
-            print(f"Erreur Save: {e}")
-
-    # Initialisation
-    state["index"] = load_from_cloud()
-
+    # Canvas pour dessiner la roue
     cp = cv.Canvas(expand=True, shapes=[])
 
-    def dessiner_roue():
+    async def dessiner_roue():
         cp.shapes.clear()
-        rayon_max, rayon_normal, centre = 150, 135, 200
+
+        # Paramètres de dessin
+        rayon_max = 150
+        rayon_normal = 135
+        centre = 180
         angle_segment = (2 * math.pi / 6)
-        padding_angle, offset_rotation = 0.08, -math.pi / 2
+        padding_angle = 0.08
+        offset_rotation = -math.pi / 2
 
         for i in range(len(ZONES)):
             start_angle = offset_rotation + i * angle_segment + (padding_angle / 2)
@@ -71,45 +59,72 @@ def main(page: ft.Page):
                 text_color = ft.Colors.WHITE
             elif i == (state["index"] + 1) % 6:
                 color = ft.Colors.GREEN_400
-                rayon_style = rayon_normal
                 text_color = ft.Colors.WHITE
 
             cp.shapes.append(
-                cv.Arc(centre - rayon_style, centre - rayon_style,
-                       rayon_style * 2, rayon_style * 2,
-                       start_angle, sweep_angle, use_center=True,
-                       paint=ft.Paint(color=color, style=ft.PaintingStyle.FILL))
+                cv.Arc(
+                    centre - rayon_style,
+                    centre - rayon_style,
+                    rayon_style * 2,
+                    rayon_style * 2,
+                    start_angle,
+                    sweep_angle,
+                    use_center=True,
+                    paint=ft.Paint(color=color, style=ft.PaintingStyle.FILL)
+                )
             )
 
-            tx = centre + (rayon_style * 0.65) * math.cos(middle_angle)
-            ty = centre + (rayon_style * 0.65) * math.sin(middle_angle)
+            tx = centre + (rayon_style * 0.6) * math.cos(middle_angle)
+            ty = centre + (rayon_style * 0.6) * math.sin(middle_angle)
+
             cp.shapes.append(
-                cv.Text(x=tx, y=ty, value=ZONES[i],
-                        style=ft.TextStyle(size=12, weight="bold", color=text_color),
-                        alignment=ft.Alignment(0, 0))
+                cv.Text(
+                    x=tx,
+                    y=ty,
+                    value=ZONES[i],
+                    style=ft.TextStyle(size=10, weight=ft.FontWeight.BOLD, color=text_color),
+                    alignment=ft.Alignment(0, 0)
+                )
             )
         page.update()
 
-    def valider(e):
+    async def valider(e):
         state["index"] = (state["index"] + 1) % 6
-        dessiner_roue()
-        save_to_cloud(state["index"])
 
-    # On utilise ton bouton qui fonctionne (FilledButton avec content)
+        if store:
+            try:
+                await store.set_async("last_index", state["index"])
+            except Exception as ex:
+                print(f"Erreur de sauvegarde : {ex}")
+
+        await dessiner_roue()
+
+    # Construction de l'interface
     page.add(
-        ft.Text("PikPik Wheel", size=28, weight="bold"),
-        ft.Container(content=cp, width=400, height=400, alignment=ft.Alignment(0, 0)),
+        ft.Text("PikPik Wheel", size=32, weight=ft.FontWeight.BOLD),
+        ft.Container(
+            content=cp,
+            width=360,
+            height=360,
+            alignment=ft.Alignment.CENTER
+        ),
         ft.FilledButton(
             content=ft.Row(
-                [ft.Icon(ft.Icons.SYNC), ft.Text("Fait !", size=16, weight="bold")],
-                alignment=ft.MainAxisAlignment.CENTER, tight=True
+                [ft.Icon(ft.Icons.SYNC), ft.Text("FAIT", size=20, weight=ft.FontWeight.BOLD)],
+                alignment=ft.MainAxisAlignment.CENTER,
+                tight=True
             ),
             on_click=valider,
-            style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=10))
+            style=ft.ButtonStyle(
+                padding=25,
+                shape=ft.RoundedRectangleBorder(radius=15)
+            )
         )
     )
 
-    dessiner_roue()
+    await dessiner_roue()
 
 
-ft.run(main)
+# Lancement
+if __name__ == "__main__":
+    ft.run(main)
