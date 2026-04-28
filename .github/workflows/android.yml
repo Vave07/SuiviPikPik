@@ -1,0 +1,31 @@
+name: Build Android APK
+on:
+  push:
+    branches: [ main ] # Se lance quand tu pousses sur la branche main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Flet and Requests
+        run: |
+          pip install flet requests
+
+      - name: Build APK
+        run: |
+          # Cette commande compile l'app. 
+          # On lui donne un nom et un identifiant unique.
+          flet build apk --project "PikPikApp" --org "com.tonnom.pikpik"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: pikpik-app-apk
+          path: build/apk/*.apk
