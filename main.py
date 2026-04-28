@@ -1,7 +1,7 @@
 import flet as ft
 import flet.canvas as cv
 import math
-import requests
+import flet.fastapi as requests
 
 DB_URL = "https://kvdb.io/A2QB57woxyPTdmuS4SCHr1/index_rotation"
 ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
