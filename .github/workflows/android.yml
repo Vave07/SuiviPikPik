@@ -7,10 +7,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4 # Mis à jour en v4
+      - uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v5 # Mis à jour en v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -20,12 +20,12 @@ jobs:
 
       - name: Build APK
         run: |
-          # On crée le dossier assets s'il n'existe pas pour éviter les erreurs de build
           mkdir -p assets
-          flet build apk --project "PikPikApp" --org "com.tonnom.pikpik"
+          # Ajout de --include-flutter pour éviter la question interactive
+          flet build apk --project "PikPikApp" --org "com.tonnom.pikpik" --include-flutter
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4 # LA CORRECTION : passage en v4
+        uses: actions/upload-artifact@v4
         with:
           name: pikpik-app-apk
           path: build/apk/*.apk
