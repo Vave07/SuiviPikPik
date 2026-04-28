@@ -23,19 +23,35 @@ def main(page: ft.Page):
         try:
             response = page.fetch(DB_URL)
             if response:
+                # On décode et on nettoie
                 val_txt = response.decode("utf-8") if isinstance(response, bytes) else str(response)
+                # Si KVDB renvoie une erreur ou est vide, on part sur 0
+                if not val_txt or "not found" in val_txt.lower():
+                    return 0
                 return int(val_txt.strip())
-        except:
-            pass
+        except Exception as e:
+            print(f"Erreur Load: {e}")
         return 0
 
     def save_to_cloud(val):
         try:
-            page.fetch(DB_URL, method="PUT", body=str(val))
-        except:
-            pass
+            # On s'assure d'envoyer une chaîne propre
+            # KVDB accepte le PUT direct pour créer/modifier
+            page.fetch(
+                DB_URL,
+                method="PUT",
+                body=str(val).encode("utf-8"), # On force l'encodage pour le web
+            )
+        except Exception as e:
+            print(f"Erreur Save: {e}")
 
+    # Au démarrage : on charge
     state["index"] = load_from_cloud()
+    # TRÈS IMPORTANT : On force une première écriture pour créer la clé sur KVDB
+    # si c'est la première fois qu'on l'utilise.
+    save_to_cloud(state["index"])
+
+
 
     cp = cv.Canvas(expand=True, shapes=[])
 
