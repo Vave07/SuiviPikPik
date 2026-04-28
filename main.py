@@ -1,8 +1,8 @@
 import flet as ft
 import flet.canvas as cv
 import math
+import urllib.request
 
-# Ton URL KVDB
 DB_URL = "https://kvdb.io/A2QB57woxyPTdmuS4SCHr1/index_rotation"
 ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
@@ -13,45 +13,40 @@ def main(page: ft.Page):
     page.horizontal_alignment = "center"
     page.vertical_alignment = "center"
 
-    # Autoriser la communication avec KVDB
-    page.fetch_whitelist = ["https://kvdb.io/*"]
-
     state = {"index": 0}
 
-    # --- SYNCHRO CLOUD ---
+    # --- SYNCHRO AVEC HEADERS ---
     def load_from_cloud():
         try:
-            response = page.fetch(DB_URL)
-            if response:
-                # On décode et on nettoie
-                val_txt = response.decode("utf-8") if isinstance(response, bytes) else str(response)
-                # Si KVDB renvoie une erreur ou est vide, on part sur 0
-                if not val_txt or "not found" in val_txt.lower():
-                    return 0
-                return int(val_txt.strip())
+            # On ajoute un User-Agent pour éviter la 403
+            req = urllib.request.Request(
+                DB_URL,
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                val_txt = response.read().decode('utf-8')
+                if val_txt and "not found" not in val_txt.lower():
+                    return int(val_txt.strip())
         except Exception as e:
-            print(f"Erreur Load: {e}")
+            # Le 404 est normal si le fichier n'existe pas encore
+            print(f"Info Load: {e}")
         return 0
 
     def save_to_cloud(val):
         try:
-            # On s'assure d'envoyer une chaîne propre
-            # KVDB accepte le PUT direct pour créer/modifier
-            page.fetch(
+            req = urllib.request.Request(
                 DB_URL,
-                method="PUT",
-                body=str(val).encode("utf-8"), # On force l'encodage pour le web
+                data=str(val).encode('utf-8'),
+                method='PUT',
+                headers={'User-Agent': 'Mozilla/5.0'}
             )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                print(f"Sauvegarde OK : {val}")
         except Exception as e:
             print(f"Erreur Save: {e}")
 
-    # Au démarrage : on charge
+    # Initialisation
     state["index"] = load_from_cloud()
-    # TRÈS IMPORTANT : On force une première écriture pour créer la clé sur KVDB
-    # si c'est la première fois qu'on l'utilise.
-    save_to_cloud(state["index"])
-
-
 
     cp = cv.Canvas(expand=True, shapes=[])
 
@@ -100,17 +95,17 @@ def main(page: ft.Page):
         dessiner_roue()
         save_to_cloud(state["index"])
 
+    # On utilise ton bouton qui fonctionne (FilledButton avec content)
     page.add(
         ft.Text("PikPik Wheel", size=28, weight="bold"),
         ft.Container(content=cp, width=400, height=400, alignment=ft.Alignment(0, 0)),
         ft.FilledButton(
-            content="Fait !",
-            icon=ft.Icons.SYNC,
+            content=ft.Row(
+                [ft.Icon(ft.Icons.SYNC), ft.Text("Fait !", size=16, weight="bold")],
+                alignment=ft.MainAxisAlignment.CENTER, tight=True
+            ),
             on_click=valider,
-            style=ft.ButtonStyle(
-                padding=20,
-                shape=ft.RoundedRectangleBorder(radius=10)
-            )
+            style=ft.ButtonStyle(padding=20, shape=ft.RoundedRectangleBorder(radius=10))
         )
     )
 
