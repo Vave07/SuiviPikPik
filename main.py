@@ -18,20 +18,21 @@ def main(page: ft.Page):
     # --- FONCTIONS DE SYNCHRO CLOUD ---
     def load_from_cloud():
         try:
-            r = requests.get(DB_URL, timeout=3)
-            if r.status_code == 200:
-                return int(r.text)
-        except:
-            print("Impossible de joindre le cloud, passage à 0")
+            # page.fetch est l'équivalent de requests.get mais autorisé par le navigateur
+            response = page.fetch(DB_URL)
+            if response:
+                return int(response)
+        except Exception as e:
+            print(f"Erreur de chargement: {e}")
         return 0
 
     def save_to_cloud(val):
         try:
-            # On envoie le chiffre sous forme de texte brut (plain text)
-            requests.put(DB_URL, data=str(val), timeout=3)
+            # On utilise page.fetch avec la méthode PUT pour sauvegarder
+            page.fetch(DB_URL, method="PUT", body=str(val))
         except Exception as e:
-            print(f"Erreur sauvegarde : {e}")
-
+            print(f"Erreur de sauvegarde: {e}")
+            
     # Chargement initial
     state["index"] = load_from_cloud()
 
