@@ -1,34 +1,30 @@
 import flet as ft
 import flet.canvas as cv
 import math
-import asyncio # Ajouté pour la petite pause de sécurité
 
 ZONES = ["Bras Droit", "Ventre Droit", "Cuisse Droite", "Cuisse Gauche", "Ventre Gauche", "Bras Gauche"]
 
 async def main(page: ft.Page):
+    # Configuration de base pour tester l'affichage immédiat
     page.title = "PikPik Wheel"
     page.theme_mode = ft.ThemeMode.LIGHT
+    page.bgcolor = ft.Colors.GREY_50 # Si l'écran devient gris, le code s'exécute !
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.padding = 20
 
+    # État initial
     state = {"index": 0}
 
-    # --- SYSTÈME DE SAUVEGARDE AMÉLIORÉ ---
-    # On force l'utilisation de client_storage car storage n'existe pas chez toi
-    async def get_storage():
-        # Petite pause pour laisser Android réveiller le stockage
-        await asyncio.sleep(0.2)
-        return page.client_storage
-
-    # --- CHARGEMENT INITIAL ---
-    store = await get_storage()
+    # --- CHARGEMENT INITIAL (Plus robuste pour APK) ---
     try:
-        stored_index = await store.get_async("last_index")
-        if stored_index is not None:
-            state["index"] = int(stored_index)
+        # On attend que l'app soit bien lancée pour lire
+        if page.client_storage:
+            val = await page.client_storage.get_async("last_index")
+            if val is not None:
+                state["index"] = int(val)
     except Exception as e:
-        print(f"Erreur de lecture : {e}")
+        print(f"Erreur chargement: {e}")
 
     cp = cv.Canvas(expand=True, shapes=[])
 
@@ -78,18 +74,19 @@ async def main(page: ft.Page):
 
     async def valider(e):
         state["index"] = (state["index"] + 1) % 6
-        # On sauvegarde immédiatement
         try:
-            await page.client_storage.set_async("last_index", state["index"])
-        except Exception as ex:
-            print(f"Erreur de sauvegarde : {ex}")
+            if page.client_storage:
+                await page.client_storage.set_async("last_index", state["index"])
+        except:
+            pass
         await dessiner_roue()
 
+    # Construction de l'interface
     page.add(
         ft.Text("PikPik Wheel", size=32, weight=ft.FontWeight.BOLD),
         ft.Container(
             content=cp, width=360, height=360, 
-            alignment=ft.Alignment.CENTER # Correction bien maintenue
+            alignment=ft.Alignment.CENTER 
         ),
         ft.FilledButton(
             content=ft.Row(
@@ -105,3 +102,4 @@ async def main(page: ft.Page):
 
 if __name__ == "__main__":
     ft.run(main)
+    
